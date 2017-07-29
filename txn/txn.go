@@ -12,12 +12,13 @@ type Transaction struct {
 	Nonce    uint64 // i think this can also be a bigint, but not sure.
 	GasPrice *big.Int
 	GasLimit *big.Int
-	To       string
-	Value    *big.Int
-	Data     []byte
-	V        int
-	R        *big.Int
-	S        *big.Int
+	// TODO should this be []byte?
+	To    string // `0xHEX` format
+	Value *big.Int
+	Data  []byte
+	V     int
+	R     *big.Int
+	S     *big.Int
 }
 
 func Decode(raw []byte) (Transaction, error) {
@@ -129,5 +130,35 @@ func (t Transaction) Hash() string {
 }
 
 func (t Transaction) Encode() []byte {
-	return []byte{}
+	// returns the left-trimmed byte array of the big endian encoding of the given
+	// uint64
+	intToArr := func(i uint64) []byte {
+		o := make([]byte, 8)
+		binary.BigEndian.PutUint64(o, i)
+		for i, b := range o {
+			if b == 0 {
+				continue
+			}
+			return o[i:]
+		}
+		return []byte{}
+	}
+
+	return EncodeRLP([][]byte{
+		intToArr(t.Nonce),
+		t.GasPrice.Bytes(),
+		t.GasLimit.Bytes(),
+		func(addr string) []byte {
+			b, err := hex.DecodeString(addr[2:])
+			if err != nil {
+				panic(err)
+			}
+			return b
+		}(t.To),
+		t.Value.Bytes(),
+		t.Data,
+		intToArr(uint64(t.V)),
+		t.R.Bytes(),
+		t.S.Bytes(),
+	})
 }

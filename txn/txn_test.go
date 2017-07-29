@@ -55,7 +55,7 @@ func TestEncodeDecode(t *testing.T) {
 			t.Fatalf("Expected: %+v, received: %+v", test.txn, dTxn)
 		}
 
-		if encoded := dTxn.Encode(); encoded != traw {
+		if encoded := dTxn.Encode(); !reflect.DeepEqual(encoded, traw) {
 			t.Fatalf("Expected: %+v, received: %+v", traw, encoded)
 		}
 	}
