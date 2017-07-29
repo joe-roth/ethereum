@@ -28,9 +28,10 @@ func NewAccount(pk string) (Account, error) {
 }
 
 func (a Account) Address() string {
+	// Pubkey is base point times private key...it is x,y point.
 	x, y := crypto.S256().ScalarBaseMult(a.privateKey)
 
-	// Create ECDSA public key (64 bytes)
+	// Create ECDSA public key (64 bytes) as concatenation of x and y points.
 	pub := append(x.Bytes(), y.Bytes()...)
 
 	// Keccak-256 hash of pub key (32 bytes)

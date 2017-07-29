@@ -1,4 +1,4 @@
-package main
+package txn
 
 import (
 	"bytes"
@@ -17,7 +17,7 @@ func DecodeRLP(in io.Reader) (interface{}, error) {
 
 	switch {
 	case h < 0x80:
-		return h, nil
+		return []byte{h}, nil
 	case h <= 0xb7:
 		s := make([]byte, h-0x80)
 		if _, err := in.Read(s); err != nil {

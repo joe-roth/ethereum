@@ -1,4 +1,4 @@
-package main
+package txn
 
 import (
 	"bytes"
@@ -23,7 +23,7 @@ func TestDecodeRLP(t *testing.T) {
 		{[]byte{0xc8, 0x83, byte('c'), byte('a'), byte('t'), 0x83, byte('d'), byte('o'), byte('g')}, [][]byte{[]byte("cat"), []byte("dog")}},
 		{[]byte{0x80}, []byte{}},
 		{[]byte{0xc0}, []byte{}},
-		{[]byte{0x0f}, byte(0x0f)},
+		{[]byte{0x0f}, []byte{0x0f}},
 		{[]byte{0x82, 0x04, 0x00}, []byte{0x04, 0x00}},
 		//"[[] [[]] [[] [[]]]]"
 		{[]byte{0xc7, 0xc0, 0xc1, 0xc0, 0xc3, 0xc0, 0xc1, 0xc0}, []interface{}{[]interface{}{}, [][]interface{}{{}}, []interface{}{[]interface{}{}, [][]interface{}{{}}}}},
