@@ -3,12 +3,15 @@ package txn
 import (
 	"encoding/hex"
 	"ethereum/util"
+	"fmt"
 	"math/big"
 	"reflect"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
-func TestDecode(t *testing.T) {
+func TestEncodeDecode(t *testing.T) {
 	hexToBigInt := func(hex string) *big.Int {
 		i, _ := new(big.Int).SetString(hex, 16)
 		return i
@@ -68,4 +71,40 @@ func TestDecode(t *testing.T) {
 	//R:        0xa136f60d53f5f102ffc0e7487c21ed1aa9658f4ca7bc60fa7e98d9b497292bd2
 	//S:        0x720e3078bddca1c6de4c34cadb186fa338548c41850588a3bbb75af1e17ac529
 	//Hex:      f86d808504a817c80082520894857269a63cabbe3f78065a8986d54422fd49f08b89015af1d78b58c40000801ca0a136f60d53f5f102ffc0e7487c21ed1aa9658f4ca7bc60fa7e98d9b497292bd2a0720e3078bddca1c6de4c34cadb186fa338548c41850588a3bbb75af1e17ac529
+}
+
+func TestHash(t *testing.T) {
+
+	var tests = []struct {
+		hex  string
+		hash string
+	}{
+		{
+			hex: "f86d808504a817c80082520894857269a63cabbe3f78065a8986d54422fd49f08b8901" +
+				"5af1d78b58c40000801ca0a136f60d53f5f102ffc0e7487c21ed1aa9658f4ca7bc60fa7e98d" +
+				"9b497292bd2a0720e3078bddca1c6de4c34cadb186fa338548c41850588a3bbb75af1e17ac529",
+			hash: "0548a882856e41ff1bb963032b9e683dd8e45fe7b9344ee045ddfa2712441f8e",
+		},
+	}
+
+	for _, test := range tests {
+		traw, err := hex.DecodeString(test.hex)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		c := crypto.Keccak256(traw)
+		fmt.Printf("c = %+v\n", c)
+		hs := hex.EncodeToString(c)
+		fmt.Printf("hs = %+v\n", hs)
+
+		dTxn, err := Decode(traw)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if dh := dTxn.Hash(); dh != test.hash {
+			t.Fatalf("Expected: %s, received: %s", test.hash, dh)
+		}
+	}
 }

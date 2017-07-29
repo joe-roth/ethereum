@@ -7,6 +7,7 @@ import (
 )
 
 // DecodeRLP decoded an RLP encoded byte array.
+// TODO should return [][]byte
 func DecodeRLP(in io.Reader) (interface{}, error) {
 	//h := make([]byte, 1)
 	t := make([]byte, 1)
@@ -16,7 +17,7 @@ func DecodeRLP(in io.Reader) (interface{}, error) {
 	h := t[0]
 
 	switch {
-	case h < 0x80:
+	case h <= 0x7f:
 		return []byte{h}, nil
 	case h <= 0xb7:
 		s := make([]byte, h-0x80)
@@ -71,4 +72,31 @@ func DecodeRLP(in io.Reader) (interface{}, error) {
 		}
 		return list, nil
 	}
+}
+
+func EncodeRLP(in [][]byte) []byte {
+	out := bytes.NewBuffer([]byte{})
+
+	for _, arr := range in {
+		h := len(arr)
+		switch {
+		case h == 1 && arr[0] < 0x80:
+			_, _ = out.Write([]byte{arr[0]})
+		case h == 1:
+			out.Write([]byte{0x81, arr[0]})
+		case h <= 55:
+			o := append([]byte{0x80 + byte(h)}, arr...)
+			_, _ = out.Write(o)
+		default:
+			// TODO support when string length is >55 bytes
+			panic("unsupported")
+		}
+	}
+
+	// TODO support when out.Len() overflows uint8
+	tl := uint8(out.Len())
+	if tl <= 55 {
+		return append([]byte{0xc0 + tl}, out.Bytes()...)
+	}
+	return append([]byte{0xf8, tl}, out.Bytes()...)
 }
