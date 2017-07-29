@@ -61,9 +61,36 @@ func Decode(raw []byte) (Transaction, error) {
 	}, nil
 }
 
-func (t *Transaction) Verify() bool {
-	return false
+func (t *Transaction) Sender() string {
+	if t.V != 27 && t.V != 28 {
+		panic("protected txns not yet supported")
+	}
+	// Compute hash of txn
+	//intToByteArray := func(i uint64) []byte {
+	//var o []byte
+	//binary.BigEndian.PutUint64(o, i)
+	//return []byte{}
+	//}
+
+	//rlp := EncodeRLP([][]byte{})
+	return ""
 }
+
+//return rlpHash([]interface{}{
+//tx.data.AccountNonce,
+//tx.data.Price,
+//tx.data.GasLimit,
+//tx.data.Recipient,
+//tx.data.Amount,
+//tx.data.Payload,
+//})
+
+//func rlpHash(x interface{}) (h common.Hash) {
+//hw := sha3.NewKeccak256()
+//rlp.Encode(hw, x)
+//hw.Sum(h[:0])
+//return h
+//}
 
 func (t *Transaction) Sign([]byte) {
 	//func SignTx(tx *Transaction, s Signer, prv *ecdsa.PrivateKey) (*Transaction, error) {
