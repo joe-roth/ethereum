@@ -1,4 +1,4 @@
-package addr
+package accnt
 
 import (
 	"encoding/hex"
@@ -27,6 +27,10 @@ func NewAccount(pk string) (Account, error) {
 	}, nil
 }
 
+func PubKeyToAddress(pub) {
+
+}
+
 func (a Account) Address() string {
 	// Pubkey is base point times private key...it is x,y point.
 	x, y := crypto.S256().ScalarBaseMult(a.privateKey)
@@ -42,6 +46,11 @@ func (a Account) Address() string {
 	return fmt.Sprintf("0x%x", c[12:])
 }
 
+// Signing a message will return v, r, s values.  These values can be used to
+// verify and txn, or to derive the signer's public key.
 func (a Account) Sign(d []byte) []byte {
-	return []byte{}
+	prv := ecdsa.PrivateKey{
+		D: new(big.Int).SetBytes(d),
+	}
+	sig, err := crypto.Sign(d, prv)
 }
