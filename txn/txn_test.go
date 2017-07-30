@@ -62,7 +62,6 @@ func TestEncodeDecode(t *testing.T) {
 }
 
 func TestSender(t *testing.T) {
-
 	var tests = []struct {
 		txn    Transaction
 		sender string
@@ -91,19 +90,23 @@ func TestSender(t *testing.T) {
 				R:        hexToBigInt("48b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353"),
 				S:        hexToBigInt("1fffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804"),
 			},
-			sender: "963f4a0d8a11b758de8d5b99ab4ac898d6438ea6",
+			sender: "0x963f4a0d8a11b758de8d5b99ab4ac898d6438ea6",
 		},
 	}
 
 	for _, test := range tests {
-		if s := test.txn.Sender(); s != test.sender {
+		s, err := test.txn.Sender()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if s != test.sender {
 			t.Fatalf("Expected: %s, received: %s", test.sender, s)
 		}
 	}
 }
 
 func TestHash(t *testing.T) {
-
 	var tests = []struct {
 		hex  string
 		hash string

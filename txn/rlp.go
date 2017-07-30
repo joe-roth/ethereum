@@ -100,3 +100,17 @@ func EncodeRLP(in [][]byte) []byte {
 	}
 	return append([]byte{0xf8, tl}, out.Bytes()...)
 }
+
+// returns the left-trimmed byte array of the big endian encoding of the given
+// uint64
+func intToArr(i uint64) []byte {
+	o := make([]byte, 8)
+	binary.BigEndian.PutUint64(o, i)
+	for i, b := range o {
+		if b == 0 {
+			continue
+		}
+		return o[i:]
+	}
+	return []byte{}
+}

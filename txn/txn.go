@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 type Transaction struct {
@@ -62,38 +65,47 @@ func Decode(raw []byte) (Transaction, error) {
 	}, nil
 }
 
-func (t *Transaction) Sender() string {
+func (t *Transaction) Sender() (string, error) {
 	if t.V != 27 && t.V != 28 {
-		panic("protected txns not yet supported")
+		return "", errors.New("protected txns not yet supported")
 	}
-	// Compute hash of txn
-	//intToByteArray := func(i uint64) []byte {
-	//var o []byte
-	//binary.BigEndian.PutUint64(o, i)
-	//return []byte{}
-	//}
 
-	//rlp := EncodeRLP([][]byte{})
-	return ""
+	enc := EncodeRLP([][]byte{
+		intToArr(t.Nonce),
+		t.GasPrice.Bytes(),
+		t.GasLimit.Bytes(),
+		func(addr string) []byte {
+			b, err := hex.DecodeString(addr[2:])
+			if err != nil {
+				panic(err)
+			}
+			return b
+		}(t.To),
+		t.Value.Bytes(),
+		t.Data,
+	})
+
+	hash := crypto.Keccak256(enc)
+
+	sig := make([]byte, 65)
+	copy(sig[32-len(t.R.Bytes()):32], t.R.Bytes())
+	copy(sig[64-len(t.S.Bytes()):64], t.S.Bytes())
+	sig[64] = byte(t.V - 27)
+
+	// recover the public key from the snature
+	pub, err := crypto.Ecrecover(hash, sig)
+	if err != nil {
+		return "", err
+	}
+
+	if len(pub) == 0 || pub[0] != 4 {
+		return "", errors.New("invalid public key")
+	}
+
+	return fmt.Sprintf("0x%x", crypto.Keccak256(pub[1:])[12:]), nil
 }
 
-//return rlpHash([]interface{}{
-//tx.data.AccountNonce,
-//tx.data.Price,
-//tx.data.GasLimit,
-//tx.data.Recipient,
-//tx.data.Amount,
-//tx.data.Payload,
-//})
-
-//func rlpHash(x interface{}) (h common.Hash) {
-//hw := sha3.NewKeccak256()
-//rlp.Encode(hw, x)
-//hw.Sum(h[:0])
-//return h
-//}
-
-func (t *Transaction) Sign([]byte) {
+func (t *Transaction) Sign() {
 	//func SignTx(tx *Transaction, s Signer, prv *ecdsa.PrivateKey) (*Transaction, error) {
 	//h := s.Hash(tx)
 	//sig, err := crypto.Sign(h[:], prv)
@@ -130,20 +142,6 @@ func (t Transaction) Hash() string {
 }
 
 func (t Transaction) Encode() []byte {
-	// returns the left-trimmed byte array of the big endian encoding of the given
-	// uint64
-	intToArr := func(i uint64) []byte {
-		o := make([]byte, 8)
-		binary.BigEndian.PutUint64(o, i)
-		for i, b := range o {
-			if b == 0 {
-				continue
-			}
-			return o[i:]
-		}
-		return []byte{}
-	}
-
 	return EncodeRLP([][]byte{
 		intToArr(t.Nonce),
 		t.GasPrice.Bytes(),
