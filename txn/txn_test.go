@@ -2,6 +2,7 @@ package txn
 
 import (
 	"encoding/hex"
+	"ethereum/accnt"
 	"ethereum/util"
 	"fmt"
 	"math/big"
@@ -103,6 +104,37 @@ func TestSender(t *testing.T) {
 		if s != test.sender {
 			t.Fatalf("Expected: %s, received: %s", test.sender, s)
 		}
+	}
+}
+
+func TestSign(t *testing.T) {
+	// Create Private account.
+	priv, err := accnt.NewAccount("cb4aab9577130f5c4622f355e5c6c3cad2661518ac968c34e4f14a9fde071bfd")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Private Account sign transaction.
+	txn := Transaction{
+		Nonce:    4,
+		GasPrice: big.NewInt(1), // 2E10 doesn't overflow int64, or else this wouldn't work.
+		GasLimit: big.NewInt(21000),
+		To:       "0x095e7baea6a6c7c4c2dfeb977efac326af552d87",
+		Value:    big.NewInt(0x0a),
+		Data:     []byte{},
+	}
+	if err := txn.Sign(priv); err != nil {
+		t.Fatal(err)
+	}
+
+	// Get sender of signed transaction and compare to private account.
+	sender, err := txn.Sender()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if sender != priv.Address() {
+		t.Fatalf("Expected: %s, received: %s", priv.Address(), sender)
 	}
 }
 

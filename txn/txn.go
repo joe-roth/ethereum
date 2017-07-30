@@ -70,22 +70,7 @@ func (t *Transaction) Sender() (string, error) {
 		return "", errors.New("protected txns not yet supported")
 	}
 
-	hash := crypto.Keccak256(EncodeRLP([][]byte{
-		intToArr(t.Nonce),
-		t.GasPrice.Bytes(),
-		t.GasLimit.Bytes(),
-		func(addr string) []byte {
-			b, err := hex.DecodeString(addr[2:])
-			if err != nil {
-				panic(err)
-			}
-			return b
-		}(t.To),
-		t.Value.Bytes(),
-		t.Data,
-	}))
-
-	pub, err := accnt.Recover(hash, accnt.Signature{
+	pub, err := accnt.Recover(t.sigHash(), accnt.Signature{
 		R: t.R,
 		S: t.S,
 		V: func(i int) bool {
@@ -102,36 +87,41 @@ func (t *Transaction) Sender() (string, error) {
 	return pub.Address(), nil
 }
 
-func (t *Transaction) Sign() {
-	//func SignTx(tx *Transaction, s Signer, prv *ecdsa.PrivateKey) (*Transaction, error) {
-	//h := s.Hash(tx)
-	//sig, err := crypto.Sign(h[:], prv)
-	//if err != nil {
-	//return nil, err
-	//}
-	//return s.WithSignature(tx, sig)
-	//}
+// returns hashed RLP of txn which must be signed.  Does not support EIP155.
+func (t Transaction) sigHash() []byte {
+	return crypto.Keccak256(EncodeRLP([][]byte{
+		intToArr(t.Nonce),
+		t.GasPrice.Bytes(),
+		t.GasLimit.Bytes(),
+		func(addr string) []byte {
+			b, err := hex.DecodeString(addr[2:])
+			if err != nil {
+				panic(err)
+			}
+			return b
+		}(t.To),
+		t.Value.Bytes(),
+		t.Data,
+	}))
+}
 
-	// Get hash of tx
+// Will populate V,R,S fields.
+func (t *Transaction) Sign(priv accnt.Private) error {
+	sig, err := priv.Sign(t.sigHash())
+	if err != nil {
+		return err
+	}
 
-	//func (s EIP155Signer) Hash(tx *Transaction) common.Hash {
-	//return rlpHash([]interface{}{
-	//tx.data.AccountNonce,
-	//tx.data.Price,
-	//tx.data.GasLimit,
-	//tx.data.Recipient,
-	//tx.data.Amount,
-	//tx.data.Payload,
-	//s.chainId, uint(0), uint(0),
-	//})
-	//}
+	t.R = sig.R
+	t.S = sig.S
+	t.V = func(i bool) int {
+		if i {
+			return 28
+		}
+		return 27
+	}(sig.V)
 
-	//func rlpHash(x interface{}) (h common.Hash) {
-	//hw := sha3.NewKeccak256()
-	//rlp.Encode(hw, x)
-	//hw.Sum(h[:0])
-	//return h
-	//}
+	return nil
 }
 
 func (t Transaction) Hash() string {
