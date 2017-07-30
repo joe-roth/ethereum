@@ -1,4 +1,4 @@
-package addr
+package accnt
 
 import "testing"
 
@@ -15,8 +15,6 @@ func TestAddress(t *testing.T) {
 			t.Fatal(err)
 		}
 		if ad := acct.Address(); ad != test.address {
-			t.Logf("Expected: %T, received: %T", test.address, ad)
-			t.Logf("Expected: %+v, received: %+v", test.address, ad)
 			t.Fatalf("Expected: %s, received: %s", test.address, ad)
 		}
 	}
