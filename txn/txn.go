@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
+	"ethereum/accnt"
 	"fmt"
 	"math/big"
 
@@ -15,13 +16,12 @@ type Transaction struct {
 	Nonce    uint64 // i think this can also be a bigint, but not sure.
 	GasPrice *big.Int
 	GasLimit *big.Int
-	// TODO should this be []byte?
-	To    string // `0xHEX` format
-	Value *big.Int
-	Data  []byte
-	V     int
-	R     *big.Int
-	S     *big.Int
+	To       string // `0xHEX` format
+	Value    *big.Int
+	Data     []byte
+	V        int
+	R        *big.Int
+	S        *big.Int
 }
 
 func Decode(raw []byte) (Transaction, error) {
@@ -70,7 +70,7 @@ func (t *Transaction) Sender() (string, error) {
 		return "", errors.New("protected txns not yet supported")
 	}
 
-	enc := EncodeRLP([][]byte{
+	hash := crypto.Keccak256(EncodeRLP([][]byte{
 		intToArr(t.Nonce),
 		t.GasPrice.Bytes(),
 		t.GasLimit.Bytes(),
@@ -83,26 +83,23 @@ func (t *Transaction) Sender() (string, error) {
 		}(t.To),
 		t.Value.Bytes(),
 		t.Data,
+	}))
+
+	pub, err := accnt.Recover(hash, accnt.Signature{
+		R: t.R,
+		S: t.S,
+		V: func(i int) bool {
+			if i == 1 {
+				return true
+			}
+			return false
+		}(t.V - 27),
 	})
-
-	hash := crypto.Keccak256(enc)
-
-	sig := make([]byte, 65)
-	copy(sig[32-len(t.R.Bytes()):32], t.R.Bytes())
-	copy(sig[64-len(t.S.Bytes()):64], t.S.Bytes())
-	sig[64] = byte(t.V - 27)
-
-	// recover the public key from the snature
-	pub, err := crypto.Ecrecover(hash, sig)
 	if err != nil {
 		return "", err
 	}
 
-	if len(pub) == 0 || pub[0] != 4 {
-		return "", errors.New("invalid public key")
-	}
-
-	return fmt.Sprintf("0x%x", crypto.Keccak256(pub[1:])[12:]), nil
+	return pub.Address(), nil
 }
 
 func (t *Transaction) Sign() {
