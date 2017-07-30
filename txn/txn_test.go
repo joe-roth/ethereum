@@ -4,12 +4,9 @@ import (
 	"encoding/hex"
 	"ethereum/accnt"
 	"ethereum/util"
-	"fmt"
 	"math/big"
 	"reflect"
 	"testing"
-
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
 func hexToBigInt(hex string) *big.Int {
@@ -140,34 +137,27 @@ func TestSign(t *testing.T) {
 
 func TestHash(t *testing.T) {
 	var tests = []struct {
-		hex  string
+		txn  Transaction
 		hash string
 	}{
 		{
-			hex: "f86d808504a817c80082520894857269a63cabbe3f78065a8986d54422fd49f08b8901" +
-				"5af1d78b58c40000801ca0a136f60d53f5f102ffc0e7487c21ed1aa9658f4ca7bc60fa7e98d" +
-				"9b497292bd2a0720e3078bddca1c6de4c34cadb186fa338548c41850588a3bbb75af1e17ac529",
+			txn: Transaction{
+				Nonce:    0,
+				GasPrice: big.NewInt(2E10), // 2E10 doesn't overflow int64, or else this wouldn't work.
+				GasLimit: big.NewInt(21000),
+				To:       "0x857269a63cabbe3f78065a8986d54422fd49f08b",
+				Value:    util.EthToWei(25),
+				Data:     []byte{},
+				V:        28,
+				R:        hexToBigInt("a136f60d53f5f102ffc0e7487c21ed1aa9658f4ca7bc60fa7e98d9b497292bd2"),
+				S:        hexToBigInt("720e3078bddca1c6de4c34cadb186fa338548c41850588a3bbb75af1e17ac529"),
+			},
 			hash: "0548a882856e41ff1bb963032b9e683dd8e45fe7b9344ee045ddfa2712441f8e",
 		},
 	}
 
 	for _, test := range tests {
-		traw, err := hex.DecodeString(test.hex)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		c := crypto.Keccak256(traw)
-		fmt.Printf("c = %+v\n", c)
-		hs := hex.EncodeToString(c)
-		fmt.Printf("hs = %+v\n", hs)
-
-		dTxn, err := Decode(traw)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if dh := dTxn.Hash(); dh != test.hash {
+		if dh := test.txn.Hash(); dh != test.hash {
 			t.Fatalf("Expected: %s, received: %s", test.hash, dh)
 		}
 	}

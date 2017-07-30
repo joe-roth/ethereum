@@ -73,12 +73,7 @@ func (t *Transaction) Sender() (string, error) {
 	pub, err := accnt.Recover(t.sigHash(), accnt.Signature{
 		R: t.R,
 		S: t.S,
-		V: func(i int) bool {
-			if i == 1 {
-				return true
-			}
-			return false
-		}(t.V - 27),
+		V: t.V-27 == 1,
 	})
 	if err != nil {
 		return "", err
@@ -125,7 +120,7 @@ func (t *Transaction) Sign(priv accnt.Private) error {
 }
 
 func (t Transaction) Hash() string {
-	return "test"
+	return hex.EncodeToString(crypto.Keccak256(t.Encode()))
 }
 
 func (t Transaction) Encode() []byte {
