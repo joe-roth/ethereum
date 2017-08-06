@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
+// Transaction is a transaction created by user.
 type Transaction struct {
 	Nonce    uint64 // i think this can also be a bigint, but not sure.
 	GasPrice *big.Int
@@ -23,6 +24,35 @@ type Transaction struct {
 	R        *big.Int
 	S        *big.Int
 }
+
+// BlockTransaction is a representation of a transaction saved on the
+// blockchain.
+type BlockTransaction struct {
+	BlockHash        string
+	BlockNumber      uint64
+	From             string
+	Gas              *big.Int
+	GasPrice         *big.Int
+	Hash             string
+	Input            []byte
+	Nonce            uint64
+	To               string
+	TransactionIndex uint64
+	Value            *big.Int
+	V                int
+	R                *big.Int
+	S                *big.Int
+}
+
+// Transaction Receipt
+//transactionHash: DATA, 32 Bytes - hash of the transaction.
+//transactionIndex: QUANTITY - integer of the transactions index position in the block.
+//blockHash: DATA, 32 Bytes - hash of the block where this transaction was in.
+//blockNumber: QUANTITY - block number where this transaction was in.
+//cumulativeGasUsed: QUANTITY - The total amount of gas used when this transaction was executed in the block.
+//gasUsed: QUANTITY - The amount of gas used by this specific transaction alone.
+//contractAddress: DATA, 20 Bytes - The contract address created, if the transaction was a contract creation, otherwise null.
+//logs: Array - Array of log objects, which this transaction generated.
 
 func Decode(raw []byte) (Transaction, error) {
 	r, err := DecodeRLP(bytes.NewBuffer(raw))
