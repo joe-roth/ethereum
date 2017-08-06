@@ -3,7 +3,6 @@ package client
 import (
 	"encoding/hex"
 	"ethereum/txn"
-	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -35,9 +34,9 @@ func (c client) GetTransactionCount(addr string) (uint64, error) {
 	return uint64(result), err
 }
 
+// Input a signed transaction, return transaction hash.
 func (c client) SendTransaction(t txn.Transaction) (string, error) {
-	var result []byte
-	err := c.Call(&result, "eth_sendRawTransaction", hex.EncodeToString(t.Encode()))
-	fmt.Printf("result = %+v\n", result)
-	return "", err
+	var result string
+	err := c.Call(&result, "eth_sendRawTransaction", "0x"+hex.EncodeToString(t.Encode()))
+	return result, err
 }
