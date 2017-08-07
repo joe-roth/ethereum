@@ -90,7 +90,7 @@ func Decode(raw []byte) (Transaction, error) {
 			if len(i) < 20 {
 				return ""
 			}
-			return hex.EncodeToString(vals[3])
+			return "0x" + hex.EncodeToString(vals[3])
 		}(vals[3]),
 		Value: new(big.Int).SetBytes(vals[4]),
 		Data:  vals[5],
@@ -126,16 +126,19 @@ func (t *Transaction) Sender() (string, error) {
 func (t Transaction) sigHash() []byte {
 	return crypto.Keccak256(EncodeRLP([][]byte{
 		intToArr(t.Nonce),
-		t.GasPrice.Bytes(),
-		t.GasLimit.Bytes(),
+		bigIntBytes(t.GasPrice),
+		bigIntBytes(t.GasLimit),
 		func(addr string) []byte {
+			if len(addr) < 42 {
+				return []byte{}
+			}
 			b, err := hex.DecodeString(addr[2:])
 			if err != nil {
 				panic(err)
 			}
 			return b
 		}(t.To),
-		t.Value.Bytes(),
+		bigIntBytes(t.Value),
 		t.Data,
 	}))
 }
@@ -164,13 +167,6 @@ func (t Transaction) Hash() string {
 }
 
 func (t Transaction) Encode() []byte {
-	bigIntBytes := func(in *big.Int) []byte {
-		if in == nil {
-			return []byte{}
-		}
-		return in.Bytes()
-	}
-
 	return EncodeRLP([][]byte{
 		intToArr(t.Nonce),
 		t.GasPrice.Bytes(),
@@ -193,4 +189,11 @@ func (t Transaction) Encode() []byte {
 		bigIntBytes(t.R),
 		bigIntBytes(t.S),
 	})
+}
+
+func bigIntBytes(in *big.Int) []byte {
+	if in == nil {
+		return []byte{}
+	}
+	return in.Bytes()
 }
