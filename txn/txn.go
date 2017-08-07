@@ -86,12 +86,22 @@ func Decode(raw []byte) (Transaction, error) {
 		Nonce:    putVarUint64(vals[0]),
 		GasPrice: new(big.Int).SetBytes(vals[1]),
 		GasLimit: new(big.Int).SetBytes(vals[2]),
-		To:       "0x" + hex.EncodeToString(vals[3]),
-		Value:    new(big.Int).SetBytes(vals[4]),
-		Data:     vals[5],
-		V:        int(vals[6][0]),
-		R:        new(big.Int).SetBytes(vals[7]),
-		S:        new(big.Int).SetBytes(vals[8]),
+		To: func(i []byte) string {
+			if len(i) < 20 {
+				return ""
+			}
+			return hex.EncodeToString(vals[3])
+		}(vals[3]),
+		Value: new(big.Int).SetBytes(vals[4]),
+		Data:  vals[5],
+		V: func(i []byte) int {
+			if len(i) == 0 {
+				return 0
+			}
+			return int(i[0])
+		}(vals[6]),
+		R: new(big.Int).SetBytes(vals[7]),
+		S: new(big.Int).SetBytes(vals[8]),
 	}, nil
 }
 
@@ -154,21 +164,33 @@ func (t Transaction) Hash() string {
 }
 
 func (t Transaction) Encode() []byte {
+	bigIntBytes := func(in *big.Int) []byte {
+		if in == nil {
+			return []byte{}
+		}
+		return in.Bytes()
+	}
+
 	return EncodeRLP([][]byte{
 		intToArr(t.Nonce),
 		t.GasPrice.Bytes(),
 		t.GasLimit.Bytes(),
 		func(addr string) []byte {
+			// 0x = 2 chars
+			// 20 byte address in hex == 40 chars
+			if len(addr) < 42 {
+				return []byte{}
+			}
 			b, err := hex.DecodeString(addr[2:])
 			if err != nil {
-				panic(err)
+				return []byte{}
 			}
 			return b
 		}(t.To),
-		t.Value.Bytes(),
+		bigIntBytes(t.Value),
 		t.Data,
 		intToArr(uint64(t.V)),
-		t.R.Bytes(),
-		t.S.Bytes(),
+		bigIntBytes(t.R),
+		bigIntBytes(t.S),
 	})
 }

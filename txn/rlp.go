@@ -7,9 +7,8 @@ import (
 )
 
 // DecodeRLP decoded an RLP encoded byte array.
-// TODO should return [][]byte
+// TODO should return [][]byte, but difficult because of recursion.
 func DecodeRLP(in io.Reader) (interface{}, error) {
-	//h := make([]byte, 1)
 	t := make([]byte, 1)
 	if _, err := in.Read(t); err != nil {
 		return nil, err
@@ -30,7 +29,7 @@ func DecodeRLP(in io.Reader) (interface{}, error) {
 		if _, err := in.Read(ll); err != nil {
 			return nil, err
 		}
-		l, _ := binary.Uvarint(ll)
+		l := arrToInt(ll)
 		s := make([]byte, l)
 		if _, err := in.Read(s); err != nil {
 			return nil, err
@@ -56,7 +55,7 @@ func DecodeRLP(in io.Reader) (interface{}, error) {
 		if _, err := in.Read(ll); err != nil {
 			return nil, err
 		}
-		l, _ := binary.Uvarint(ll)
+		l := arrToInt(ll)
 		s := make([]byte, l)
 		if _, err := in.Read(s); err != nil {
 			return nil, err
@@ -88,17 +87,25 @@ func EncodeRLP(in [][]byte) []byte {
 			o := append([]byte{0x80 + byte(h)}, arr...)
 			_, _ = out.Write(o)
 		default:
-			// TODO support when string length is >55 bytes
-			panic("unsupported")
+			// when string length is >55 bytes
+			// write 0xf7+length of length of string
+			// write length of string
+			// write string
+			l := intToArr(uint64(h))
+			_ = out.WriteByte(byte(0xb7 + len(l)))
+			_, _ = out.Write(l)
+			_, _ = out.Write(arr)
 		}
 	}
 
-	// TODO support when out.Len() overflows uint8
-	tl := uint8(out.Len())
-	if tl <= 55 {
-		return append([]byte{0xc0 + tl}, out.Bytes()...)
+	ol := out.Len()
+	if out.Len() <= 55 {
+		return append([]byte{byte(0xc0 + ol)}, out.Bytes()...)
 	}
-	return append([]byte{0xf8, tl}, out.Bytes()...)
+
+	ola := intToArr(uint64(ol))
+	r := append([]byte{byte(0xf7 + len(ola))}, ola...)
+	return append(r, out.Bytes()...)
 }
 
 // returns the left-trimmed byte array of the big endian encoding of the given
@@ -113,4 +120,12 @@ func intToArr(i uint64) []byte {
 		return o[i:]
 	}
 	return []byte{}
+}
+
+func arrToInt(a []byte) uint64 {
+	if len(a) > 8 {
+		return 0
+	}
+
+	return binary.BigEndian.Uint64(append(make([]byte, 8-len(a)), a...))
 }
