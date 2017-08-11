@@ -35,8 +35,43 @@ func (c client) GetTransactionCount(addr string) (uint64, error) {
 	return uint64(result), err
 }
 
+func (c client) GetTransactionReceipt(hash string) (txn.TransactionReceipt, error) {
+	var rawTxnReceipt = struct {
+		BlockHash         string   `json:"blockHash"`
+		BlockNumber       string   `json:"blockNumber"`
+		ContractAddress   string   `json:"contractAddress"`
+		CumulativeGasUsed string   `json:"cumulativeGasUsed"`
+		From              string   `json:"from"`
+		GasUsed           string   `json:"gasUsed"`
+		Logs              []string `json:"logs"`
+		LogsBloom         string   `json:"logsBloom"`
+		Root              string   `json:"root"`
+		To                string   `json:"to"`
+		TransactionHash   string   `json:"transactionHash"`
+		TransactionIndex  string   `json:"transactionIndex"`
+	}{}
+	err := c.Call(&rawTxnReceipt, "eth_getTransactionReceipt", hash)
+	if err != nil {
+		return txn.TransactionReceipt{}, err
+	}
+
+	return txn.TransactionReceipt{
+		BlockHash:         rawTxnReceipt.BlockHash,
+		BlockNumber:       util.HexToUint64(rawTxnReceipt.BlockNumber),
+		ContractAddress:   rawTxnReceipt.ContractAddress,
+		CumulativeGasUsed: util.HexToBigInt(rawTxnReceipt.CumulativeGasUsed),
+		From:              rawTxnReceipt.From,
+		GasUsed:           util.HexToBigInt(rawTxnReceipt.GasUsed),
+		Logs:              rawTxnReceipt.Logs,
+		LogsBloom:         rawTxnReceipt.LogsBloom,
+		Root:              rawTxnReceipt.Root,
+		To:                rawTxnReceipt.To,
+		TransactionHash:   rawTxnReceipt.TransactionHash,
+		TransactionIndex:  util.HexToUint64(rawTxnReceipt.TransactionIndex),
+	}, nil
+}
+
 func (c client) GetTransaction(hash string) (txn.BlockTransaction, error) {
-	//var raw json.RawMessage
 	var rawBlockTxn = struct {
 		BlockHash        string `json:"blockHash"`
 		BlockNumber      string `json:"blockNumber"`

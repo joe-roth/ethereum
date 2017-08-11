@@ -45,14 +45,20 @@ type BlockTransaction struct {
 }
 
 // Transaction Receipt
-//transactionHash: DATA, 32 Bytes - hash of the transaction.
-//transactionIndex: QUANTITY - integer of the transactions index position in the block.
-//blockHash: DATA, 32 Bytes - hash of the block where this transaction was in.
-//blockNumber: QUANTITY - block number where this transaction was in.
-//cumulativeGasUsed: QUANTITY - The total amount of gas used when this transaction was executed in the block.
-//gasUsed: QUANTITY - The amount of gas used by this specific transaction alone.
-//contractAddress: DATA, 20 Bytes - The contract address created, if the transaction was a contract creation, otherwise null.
-//logs: Array - Array of log objects, which this transaction generated.
+type TransactionReceipt struct {
+	BlockHash         string
+	BlockNumber       uint64
+	ContractAddress   string
+	CumulativeGasUsed *big.Int
+	From              string
+	GasUsed           *big.Int
+	Logs              []string
+	LogsBloom         string
+	Root              string
+	To                string
+	TransactionHash   string
+	TransactionIndex  uint64
+}
 
 func Decode(raw []byte) (Transaction, error) {
 	r, err := DecodeRLP(bytes.NewBuffer(raw))

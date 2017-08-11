@@ -11,6 +11,84 @@ import (
 	"testing"
 )
 
+func TestGetTransactionReceipt(t *testing.T) {
+	var tests = []struct {
+		hash        string
+		rpcRequest  string
+		rpcResponse string
+		expected    txn.TransactionReceipt
+	}{
+		{
+			hash: "0xb0e27987021a059af5f01f17330d2a3c886ddb2e16b62db421ca937c061ebd40",
+			rpcRequest: `{"jsonrpc":"2.0","id":1,"method":"eth_getTransactionReceipt","params":` +
+				`["0xb0e27987021a059af5f01f17330d2a3c886ddb2e16b62db421ca937c061ebd40"]}`,
+
+			rpcResponse: `{"jsonrpc":"2.0","id":1,"result":{"blockHash":` +
+				`"0x32dc6ca00fd4b11831bda72c37e91109961604fa7f6d85c85781f22b2d7b49db","blockNumber":"0x3",` +
+				`"contractAddress":"0x73b647cba2fe75ba05b8e12ef8f8d6327d6367bf","cumulativeGasUsed":"0x2501b",` +
+				`"from":"0x19e7e376e7c213b7e7e7e46cc70a5dd086daff2a","gasUsed":"0x2501b","logs":[],"logsBloom":` +
+				`"0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000` +
+				`0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000` +
+				`000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000` +
+				`000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000` +
+				`000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000` +
+				`0000000000000000000","root":"0xe3e256a66a08e9e1c70c3726f5fa08be2c618d04c00216a3ef8a21053956a2d1","to":null,` +
+				`"transactionHash":"0xb0e27987021a059af5f01f17330d2a3c886ddb2e16b62db421ca937c061ebd40","transactionIndex":"0x0"}}`,
+			expected: txn.TransactionReceipt{
+				BlockHash:         "0x32dc6ca00fd4b11831bda72c37e91109961604fa7f6d85c85781f22b2d7b49db",
+				BlockNumber:       3,
+				ContractAddress:   "0x73b647cba2fe75ba05b8e12ef8f8d6327d6367bf",
+				CumulativeGasUsed: big.NewInt(151579),
+				From:              "0x19e7e376e7c213b7e7e7e46cc70a5dd086daff2a",
+				GasUsed:           big.NewInt(151579),
+				Logs:              []string{},
+				LogsBloom: "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" +
+					"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" +
+					"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" +
+					"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" +
+					"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" +
+					"000000000000000000",
+				Root:             "0xe3e256a66a08e9e1c70c3726f5fa08be2c618d04c00216a3ef8a21053956a2d1",
+				To:               "",
+				TransactionHash:  "0xb0e27987021a059af5f01f17330d2a3c886ddb2e16b62db421ca937c061ebd40",
+				TransactionIndex: 0,
+			},
+		},
+	}
+
+	for _, test := range tests {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			data, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if d := string(data); d != test.rpcRequest {
+				t.Fatalf("Expected: %s, received: %s", test.rpcRequest, d)
+			}
+
+			if _, err := w.Write([]byte(test.rpcResponse)); err != nil {
+				t.Fatal(err)
+			}
+		}))
+		defer ts.Close()
+
+		c, err := Dial(ts.URL)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		btx, err := c.GetTransactionReceipt(test.hash)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if !reflect.DeepEqual(btx, test.expected) {
+			t.Fatalf("Expected: %+v, received: %+v", test.expected, btx)
+		}
+	}
+}
+
 func TestGetTransaction(t *testing.T) {
 	var tests = []struct {
 		hash        string
