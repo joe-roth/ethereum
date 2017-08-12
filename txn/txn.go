@@ -25,41 +25,6 @@ type Transaction struct {
 	S        *big.Int
 }
 
-// BlockTransaction is a representation of a transaction saved on the
-// blockchain.
-type BlockTransaction struct {
-	BlockHash        string
-	BlockNumber      uint64
-	From             string
-	Gas              *big.Int
-	GasPrice         *big.Int
-	Hash             string
-	Input            []byte
-	Nonce            uint64
-	To               string
-	TransactionIndex uint64
-	Value            *big.Int
-	V                int
-	R                *big.Int
-	S                *big.Int
-}
-
-// Transaction Receipt
-type TransactionReceipt struct {
-	BlockHash         string
-	BlockNumber       uint64
-	ContractAddress   string
-	CumulativeGasUsed *big.Int
-	From              string
-	GasUsed           *big.Int
-	Logs              []string
-	LogsBloom         string
-	Root              string
-	To                string
-	TransactionHash   string
-	TransactionIndex  uint64
-}
-
 func Decode(raw []byte) (Transaction, error) {
 	r, err := DecodeRLP(bytes.NewBuffer(raw))
 	if err != nil {
@@ -131,7 +96,7 @@ func (t *Transaction) Sender() (string, error) {
 // returns hashed RLP of txn which must be signed.  Does not support EIP155.
 func (t Transaction) sigHash() []byte {
 	return crypto.Keccak256(EncodeRLP([][]byte{
-		intToArr(t.Nonce),
+		IntToArr(t.Nonce),
 		bigIntBytes(t.GasPrice),
 		bigIntBytes(t.GasLimit),
 		func(addr string) []byte {
@@ -174,7 +139,7 @@ func (t Transaction) Hash() string {
 
 func (t Transaction) Encode() []byte {
 	return EncodeRLP([][]byte{
-		intToArr(t.Nonce),
+		IntToArr(t.Nonce),
 		t.GasPrice.Bytes(),
 		t.GasLimit.Bytes(),
 		func(addr string) []byte {
@@ -191,10 +156,64 @@ func (t Transaction) Encode() []byte {
 		}(t.To),
 		bigIntBytes(t.Value),
 		t.Data,
-		intToArr(uint64(t.V)),
+		IntToArr(uint64(t.V)),
 		bigIntBytes(t.R),
 		bigIntBytes(t.S),
 	})
+}
+
+// BlockTransaction is a representation of a transaction saved on the
+// blockchain.
+type BlockTransaction struct {
+	BlockHash        string
+	BlockNumber      uint64
+	From             string
+	Gas              *big.Int
+	GasPrice         *big.Int
+	Hash             string
+	Input            []byte
+	Nonce            uint64
+	To               string
+	TransactionIndex uint64
+	Value            *big.Int
+	V                int
+	R                *big.Int
+	S                *big.Int
+}
+
+// ContractAddress should be gotten from transaction receipt...this is just a
+// derivation.
+func (bt BlockTransaction) ContractAddress() string {
+	if len(bt.Input) == 0 || bt.To != "" {
+		// This is not a contract.
+		return ""
+	}
+
+	hash := crypto.Keccak256(EncodeRLP([][]byte{
+		func(from string) []byte {
+			o, _ := hex.DecodeString(from[2:])
+			return o
+		}(bt.From),
+		IntToArr(bt.Nonce),
+	}))
+
+	return "0x" + hex.EncodeToString(hash)[24:]
+}
+
+// Transaction Receipt
+type TransactionReceipt struct {
+	BlockHash         string
+	BlockNumber       uint64
+	ContractAddress   string
+	CumulativeGasUsed *big.Int
+	From              string
+	GasUsed           *big.Int
+	Logs              []string
+	LogsBloom         string
+	Root              string
+	To                string
+	TransactionHash   string
+	TransactionIndex  uint64
 }
 
 func bigIntBytes(in *big.Int) []byte {

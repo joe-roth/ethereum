@@ -1,14 +1,18 @@
 package client
 
 import (
+	"encoding/hex"
 	"ethereum/txn"
 	"ethereum/util"
+	"fmt"
 	"io/ioutil"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 func TestGetTransactionReceipt(t *testing.T) {

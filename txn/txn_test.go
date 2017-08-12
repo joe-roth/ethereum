@@ -14,6 +14,28 @@ func hexToBigInt(hex string) *big.Int {
 	return i
 }
 
+func TestContractAddress(t *testing.T) {
+	var tests = []struct {
+		bt       BlockTransaction
+		expected string
+	}{
+		{
+			bt: BlockTransaction{
+				From:  "0x19e7e376e7c213b7e7e7e46cc70a5dd086daff2a",
+				Nonce: 1,
+				Input: []byte("test"),
+			},
+			expected: "0x73b647cba2fe75ba05b8e12ef8f8d6327d6367bf",
+		},
+	}
+
+	for _, test := range tests {
+		if addr := test.bt.ContractAddress(); addr != test.expected {
+			t.Fatalf("Expected: %s, received: %s", test.expected, addr)
+		}
+	}
+}
+
 func TestEncodeDecode(t *testing.T) {
 	// TODO test when nonce != 0
 	var tests = []struct {

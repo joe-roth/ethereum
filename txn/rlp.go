@@ -91,7 +91,7 @@ func EncodeRLP(in [][]byte) []byte {
 			// write 0xf7+length of length of string
 			// write length of string
 			// write string
-			l := intToArr(uint64(h))
+			l := IntToArr(uint64(h))
 			_ = out.WriteByte(byte(0xb7 + len(l)))
 			_, _ = out.Write(l)
 			_, _ = out.Write(arr)
@@ -103,14 +103,14 @@ func EncodeRLP(in [][]byte) []byte {
 		return append([]byte{byte(0xc0 + ol)}, out.Bytes()...)
 	}
 
-	ola := intToArr(uint64(ol))
+	ola := IntToArr(uint64(ol))
 	r := append([]byte{byte(0xf7 + len(ola))}, ola...)
 	return append(r, out.Bytes()...)
 }
 
 // returns the left-trimmed byte array of the big endian encoding of the given
 // uint64
-func intToArr(i uint64) []byte {
+func IntToArr(i uint64) []byte {
 	o := make([]byte, 8)
 	binary.BigEndian.PutUint64(o, i)
 	for i, b := range o {
