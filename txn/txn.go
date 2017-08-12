@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"ethereum/accnt"
+	"ethereum/util"
 	"fmt"
 	"math/big"
 
@@ -26,7 +27,7 @@ type Transaction struct {
 }
 
 func Decode(raw []byte) (Transaction, error) {
-	r, err := DecodeRLP(bytes.NewBuffer(raw))
+	r, err := util.DecodeRLP(bytes.NewBuffer(raw))
 	if err != nil {
 		return Transaction{}, err
 	}
@@ -95,8 +96,8 @@ func (t *Transaction) Sender() (string, error) {
 
 // returns hashed RLP of txn which must be signed.  Does not support EIP155.
 func (t Transaction) sigHash() []byte {
-	return crypto.Keccak256(EncodeRLP([][]byte{
-		IntToArr(t.Nonce),
+	return crypto.Keccak256(util.EncodeRLP([][]byte{
+		util.IntToArr(t.Nonce),
 		bigIntBytes(t.GasPrice),
 		bigIntBytes(t.GasLimit),
 		func(addr string) []byte {
@@ -138,8 +139,8 @@ func (t Transaction) Hash() string {
 }
 
 func (t Transaction) Encode() []byte {
-	return EncodeRLP([][]byte{
-		IntToArr(t.Nonce),
+	return util.EncodeRLP([][]byte{
+		util.IntToArr(t.Nonce),
 		t.GasPrice.Bytes(),
 		t.GasLimit.Bytes(),
 		func(addr string) []byte {
@@ -156,7 +157,7 @@ func (t Transaction) Encode() []byte {
 		}(t.To),
 		bigIntBytes(t.Value),
 		t.Data,
-		IntToArr(uint64(t.V)),
+		util.IntToArr(uint64(t.V)),
 		bigIntBytes(t.R),
 		bigIntBytes(t.S),
 	})
@@ -189,12 +190,12 @@ func (bt BlockTransaction) ContractAddress() string {
 		return ""
 	}
 
-	hash := crypto.Keccak256(EncodeRLP([][]byte{
+	hash := crypto.Keccak256(util.EncodeRLP([][]byte{
 		func(from string) []byte {
 			o, _ := hex.DecodeString(from[2:])
 			return o
 		}(bt.From),
-		IntToArr(bt.Nonce),
+		util.IntToArr(bt.Nonce),
 	}))
 
 	return "0x" + hex.EncodeToString(hash)[24:]

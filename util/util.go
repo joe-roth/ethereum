@@ -33,3 +33,25 @@ func decodeHexString(h string) []byte {
 	}
 	return b
 }
+
+// returns the left-trimmed byte array of the big endian encoding of the given
+// uint64
+func IntToArr(i uint64) []byte {
+	o := make([]byte, 8)
+	binary.BigEndian.PutUint64(o, i)
+	for i, b := range o {
+		if b == 0 {
+			continue
+		}
+		return o[i:]
+	}
+	return []byte{}
+}
+
+func ArrToInt(a []byte) uint64 {
+	if len(a) > 8 {
+		return 0
+	}
+
+	return binary.BigEndian.Uint64(append(make([]byte, 8-len(a)), a...))
+}

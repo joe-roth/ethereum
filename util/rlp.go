@@ -1,8 +1,7 @@
-package txn
+package util
 
 import (
 	"bytes"
-	"encoding/binary"
 	"io"
 )
 
@@ -29,7 +28,7 @@ func DecodeRLP(in io.Reader) (interface{}, error) {
 		if _, err := in.Read(ll); err != nil {
 			return nil, err
 		}
-		l := arrToInt(ll)
+		l := ArrToInt(ll)
 		s := make([]byte, l)
 		if _, err := in.Read(s); err != nil {
 			return nil, err
@@ -55,7 +54,7 @@ func DecodeRLP(in io.Reader) (interface{}, error) {
 		if _, err := in.Read(ll); err != nil {
 			return nil, err
 		}
-		l := arrToInt(ll)
+		l := ArrToInt(ll)
 		s := make([]byte, l)
 		if _, err := in.Read(s); err != nil {
 			return nil, err
@@ -106,26 +105,4 @@ func EncodeRLP(in [][]byte) []byte {
 	ola := IntToArr(uint64(ol))
 	r := append([]byte{byte(0xf7 + len(ola))}, ola...)
 	return append(r, out.Bytes()...)
-}
-
-// returns the left-trimmed byte array of the big endian encoding of the given
-// uint64
-func IntToArr(i uint64) []byte {
-	o := make([]byte, 8)
-	binary.BigEndian.PutUint64(o, i)
-	for i, b := range o {
-		if b == 0 {
-			continue
-		}
-		return o[i:]
-	}
-	return []byte{}
-}
-
-func arrToInt(a []byte) uint64 {
-	if len(a) > 8 {
-		return 0
-	}
-
-	return binary.BigEndian.Uint64(append(make([]byte, 8-len(a)), a...))
 }
