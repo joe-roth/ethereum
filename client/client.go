@@ -22,6 +22,12 @@ func Dial(url string) (client, error) {
 	return client{c}, nil
 }
 
+func (c client) ContractCall(cm txn.CallMessage) ([]byte, error) {
+	var result hexutil.Bytes
+	err := c.Call(&result, "eth_call", cm, "latest")
+	return []byte(result), err
+}
+
 // Always uses "latest" block.
 func (c client) GetBalance(addr string) (*big.Int, error) {
 	var result hexutil.Big

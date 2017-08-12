@@ -1,6 +1,7 @@
 package txn
 
 import (
+	"encoding/hex"
 	"encoding/json"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -46,8 +47,14 @@ func NewContract(abi string) (Contract, error) {
 }
 
 type CallMessage struct {
-	To   string
-	Data []byte
+	Data Data   `json:"data"`
+	To   string `json:"to"`
+}
+
+type Data []byte
+
+func (d Data) MarshalText() ([]byte, error) {
+	return []byte("0x" + hex.EncodeToString(d)), nil
 }
 
 func (c Contract) CallMessage(funcName string) CallMessage {

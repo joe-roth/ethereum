@@ -11,6 +11,60 @@ import (
 	"testing"
 )
 
+func TestCallMessage(t *testing.T) {
+	var tests = []struct {
+		input       txn.CallMessage
+		rpcRequest  string
+		rpcResponse string
+		expected    []byte
+	}{
+		{
+			input: txn.CallMessage{
+				To:   "0x73b647cba2fe75ba05b8e12ef8f8d6327d6367bf",
+				Data: []byte{0x2d, 0x59, 0xdc, 0x12},
+			},
+			rpcRequest: `{"jsonrpc":"2.0","id":1,"method":"eth_call","params":[{"data":"0x2d59dc12","to":` +
+				`"0x73b647cba2fe75ba05b8e12ef8f8d6327d6367bf"},"latest"]}`,
+			rpcResponse: `{"jsonrpc":"2.0","id":1,"result":"0x000000000000000000000000000000000000000000000000000000000000002` +
+				`0000000000000000000000000000000000000000000000000000000000000002d48656c6c6f2066726f6d206120736d6172` +
+				`7420636f6e747261637420637265617465642066726f6d206765746800000000000000000000000000000000000000"}`,
+			expected: []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 72, 101, 108, 108, 111, 32, 102, 114, 111, 109, 32, 97, 32, 115, 109, 97, 114, 116, 32, 99, 111, 110, 116, 114, 97, 99, 116, 32, 99, 114, 101, 97, 116, 101, 100, 32, 102, 114, 111, 109, 32, 103, 101, 116, 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		},
+	}
+
+	for _, test := range tests {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			data, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if d := string(data); d != test.rpcRequest {
+				t.Fatalf("Expected: %s, received: %s", test.rpcRequest, d)
+			}
+
+			if _, err := w.Write([]byte(test.rpcResponse)); err != nil {
+				t.Fatal(err)
+			}
+		}))
+		defer ts.Close()
+
+		c, err := Dial(ts.URL)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		out, err := c.ContractCall(test.input)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if !reflect.DeepEqual(out, test.expected) {
+			t.Fatalf("Expected: %+v, received: %+v", test.expected, out)
+		}
+	}
+}
+
 func TestGetTransactionReceipt(t *testing.T) {
 	var tests = []struct {
 		hash        string
