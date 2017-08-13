@@ -10,38 +10,38 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
-type client struct {
+type Client struct {
 	*rpc.Client
 }
 
-func Dial(url string) (client, error) {
+func Dial(url string) (Client, error) {
 	c, err := rpc.Dial(url)
 	if err != nil {
-		return client{}, err
+		return Client{}, err
 	}
-	return client{c}, nil
+	return Client{c}, nil
 }
 
-func (c client) ContractCall(cm txn.CallMessage) ([]byte, error) {
+func (c Client) ContractCall(cm txn.CallMessage) ([]byte, error) {
 	var result hexutil.Bytes
 	err := c.Call(&result, "eth_call", cm, "latest")
 	return []byte(result), err
 }
 
 // Always uses "latest" block.
-func (c client) GetBalance(addr string) (*big.Int, error) {
+func (c Client) GetBalance(addr string) (*big.Int, error) {
 	var result hexutil.Big
 	err := c.Call(&result, "eth_getBalance", addr, "latest")
 	return (*big.Int)(&result), err
 }
 
-func (c client) GetTransactionCount(addr string) (uint64, error) {
+func (c Client) GetTransactionCount(addr string) (uint64, error) {
 	var result hexutil.Uint64
 	err := c.Call(&result, "eth_getTransactionCount", addr, "latest")
 	return uint64(result), err
 }
 
-func (c client) GetTransactionReceipt(hash string) (txn.TransactionReceipt, error) {
+func (c Client) GetTransactionReceipt(hash string) (txn.TransactionReceipt, error) {
 	var rawTxnReceipt = struct {
 		BlockHash         string   `json:"blockHash"`
 		BlockNumber       string   `json:"blockNumber"`
@@ -77,7 +77,7 @@ func (c client) GetTransactionReceipt(hash string) (txn.TransactionReceipt, erro
 	}, nil
 }
 
-func (c client) GetTransaction(hash string) (txn.BlockTransaction, error) {
+func (c Client) GetTransaction(hash string) (txn.BlockTransaction, error) {
 	var rawBlockTxn = struct {
 		BlockHash        string `json:"blockHash"`
 		BlockNumber      string `json:"blockNumber"`
@@ -121,7 +121,7 @@ func (c client) GetTransaction(hash string) (txn.BlockTransaction, error) {
 }
 
 // Input a signed transaction, return transaction hash.
-func (c client) SendTransaction(t txn.Transaction) (string, error) {
+func (c Client) SendTransaction(t txn.Transaction) (string, error) {
 	var result string
 	err := c.Call(&result, "eth_sendRawTransaction", "0x"+hex.EncodeToString(t.Encode()))
 	return result, err
