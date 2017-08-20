@@ -2,6 +2,7 @@ package client
 
 import (
 	"encoding/hex"
+	"ethereum/contract"
 	"ethereum/txn"
 	"ethereum/util"
 	"math/big"
@@ -22,10 +23,21 @@ func Dial(url string) (Client, error) {
 	return Client{c}, nil
 }
 
-func (c Client) ContractCall(cm txn.CallMessage) ([]byte, error) {
+func (c Client) CallContract(cont contract.Contract, funcname string, inputs []interface{}, output interface{}) error {
+	cm := struct {
+		Data util.Data
+		To   string
+	}{
+		Data: util.Data(cont.Abi[funcname].Id()),
+		To:   cont.Address,
+	}
+
 	var result hexutil.Bytes
-	err := c.Call(&result, "eth_call", cm, "latest")
-	return []byte(result), err
+	if err := c.Call(&result, "eth_call", cm, "latest"); err != nil {
+		return err
+	}
+
+	return cont.UnmarshalResponse(funcname, result, output)
 }
 
 // Always uses "latest" block.

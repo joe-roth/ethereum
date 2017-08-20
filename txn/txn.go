@@ -82,7 +82,7 @@ func (t *Transaction) Sender() (string, error) {
 		return "", errors.New("protected txns not yet supported")
 	}
 
-	pub, err := accnt.Recover(t.sigHash(), accnt.Signature{
+	pub, err := accnt.Recover(t.SigHash(), accnt.Signature{
 		R: t.R,
 		S: t.S,
 		V: t.V-27 == 1,
@@ -95,7 +95,7 @@ func (t *Transaction) Sender() (string, error) {
 }
 
 // returns hashed RLP of txn which must be signed.  Does not support EIP155.
-func (t Transaction) sigHash() []byte {
+func (t Transaction) SigHash() []byte {
 	return crypto.Keccak256(util.EncodeRLP([][]byte{
 		util.IntToArr(t.Nonce),
 		bigIntBytes(t.GasPrice),
@@ -117,7 +117,7 @@ func (t Transaction) sigHash() []byte {
 
 // Will populate V,R,S fields.
 func (t *Transaction) Sign(priv accnt.Private) error {
-	sig, err := priv.Sign(t.sigHash())
+	sig, err := priv.Sign(t.SigHash())
 	if err != nil {
 		return err
 	}

@@ -6,6 +6,12 @@ import (
 	"math/big"
 )
 
+type Data []byte
+
+func (d Data) MarshalText() ([]byte, error) {
+	return []byte("0x" + hex.EncodeToString(d)), nil
+}
+
 func EthToWei(eth int64) *big.Int {
 	// wei = eth * 10^18
 	e := new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)

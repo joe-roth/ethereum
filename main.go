@@ -15,26 +15,7 @@ import (
 var cl client.Client
 
 func main() {
-	// Create client.
-	var err error
-	cl, err = client.Dial("http://localhost:18545")
-	defer cl.Close()
-	if err != nil {
-		panic(err)
-	}
 
-	//deployContract("helloWorld.sol")
-	//return
-
-	// Get txn receipt
-	txnHash := "0x738d1a90dbfbee9bd793841a185ef4e954f7057c6c4cadecf6eba9042c90ba72"
-	receipt, err := cl.GetTransactionReceipt(txnHash)
-	if err != nil {
-		panic(err)
-	}
-
-	resp := callContract(receipt.ContractAddress, "helloWorld.sol", "displayMessage")
-	fmt.Printf("resp = %+v\n", resp)
 }
 
 func getAccounts() []accnt.Private {
@@ -67,27 +48,6 @@ func getAccounts() []accnt.Private {
 	}
 
 	return accnts
-}
-
-func callContract(address, filename, functionName string) interface{} {
-	c, err := compileContract(filename)
-	if err != nil {
-		panic(err)
-	}
-
-	contract, err := txn.NewContract(c.Abi)
-	if err != nil {
-		panic(err)
-	}
-	contract.Address = address
-
-	cm := contract.CallMessage(functionName)
-	out, err := cl.ContractCall(cm)
-	if err != nil {
-		panic(err)
-	}
-
-	return contract.ProcessResponse(functionName, out)
 }
 
 func deployContract(filename string) {
