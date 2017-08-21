@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"os/exec"
 	"reflect"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -51,6 +52,47 @@ func New(abi, address string) (Contract, error) {
 	}
 
 	return c, nil
+}
+
+func Compile(filename string) (Contract, error) {
+	// Contract binary
+	cmdOut, err := exec.Command("solc",
+		"--combined-json", "abi,bin",
+		filename,
+	).Output()
+	if err != nil {
+		return Contract{}, err
+	}
+
+	// Extract abi/bin from solc output
+	var data struct {
+		Contracts map[string]struct {
+			Abi string
+			Bin string
+		}
+		Version string
+	}
+	if err := json.Unmarshal(cmdOut, &data); err != nil {
+		return Contract{}, err
+	}
+
+	// Take first contract output.
+	for _, contract := range data.Contracts {
+		cont, err := New(contract.Abi, "")
+		if err != nil {
+			return Contract{}, err
+		}
+
+		bin, err := hex.DecodeString(contract.Bin)
+		if err != nil {
+			return Contract{}, err
+		}
+		cont.Bin = bin
+
+		return cont, nil
+	}
+
+	return Contract{}, errors.New("no contract in solc output")
 }
 
 // TODO for now, only unmarshals into a string
