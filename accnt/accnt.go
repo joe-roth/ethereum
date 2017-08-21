@@ -3,7 +3,6 @@ package accnt
 import (
 	"crypto/ecdsa"
 	"encoding/hex"
-	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -75,7 +74,27 @@ func Recover(in []byte, s Signature) (Public, error) {
 	return Public(*pubk), nil
 }
 
-func (p Public) Address() string {
+type Address []byte
+
+func (a Address) MarshalText() ([]byte, error) {
+	return []byte("0x" + hex.EncodeToString(a)), nil
+}
+
+func (a Address) String() string {
+	return "0x" + hex.EncodeToString(a)
+}
+
+// hx must start with 0x
+func NewAddress(hx string) (Address, error) {
+	a, err := hex.DecodeString(hx[2:])
+	if err != nil {
+		return Address{}, err
+	}
+
+	return a, nil
+}
+
+func (p Public) Address() Address {
 	// Create ECDSA public key (64 bytes) as concatenation of x and y points.
 	pub := append(p.X.Bytes(), p.Y.Bytes()...)
 
@@ -84,5 +103,5 @@ func (p Public) Address() string {
 	c := crypto.Keccak256(pub)
 
 	// Take last 20 bytes, and prepend '0x'
-	return fmt.Sprintf("0x%x", c[12:])
+	return c[12:]
 }

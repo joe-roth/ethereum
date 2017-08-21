@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"ethereum/accnt"
+	"ethereum/txn"
 	"os/exec"
 	"reflect"
 
@@ -95,23 +97,46 @@ func Compile(filename string) (Contract, error) {
 	return Contract{}, errors.New("no contract in solc output")
 }
 
+func (c Contract) Deploy(t *txn.Transaction, args ...interface{}) error {
+	t.Data = c.Bin
+
+	constructor := c.Abi[""]
+	if len(args) != len(constructor.Inputs) {
+		return errors.New("not enough args")
+	}
+
+	for i, in := range constructor.Inputs {
+		switch in.Type {
+		case "address":
+			a, ok := args[i].(accnt.Address)
+			if !ok {
+				return errors.New("wrong type")
+			}
+			arg := append(make([]byte, 12), a...)
+			t.Data = append(t.Data, arg...)
+		}
+	}
+
+	return nil
+}
+
 // TODO for now, only unmarshals into a string
 func (c Contract) UnmarshalResponse(funcName string, resp []byte, v interface{}) error {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
 		return errors.New("invalid input")
 	}
-	e := rv.Elem()
-	if e.Kind() != reflect.String {
-		return errors.New("unexpected input type")
+
+	outputs := c.Abi[funcName].Outputs
+	if len(outputs) > 1 {
+		return errors.New("only supporting single output unmarshaling")
 	}
 
-	// Parse the response into an array of interfaces.
-	buf := bytes.NewBuffer(resp)
+	e := rv.Elem()
 
-	function := c.Abi[funcName]
-	//outputs := make([]interface{}, len(function.Outputs))
-	for _, output := range function.Outputs {
+	// Parse response
+	buf := bytes.NewBuffer(resp)
+	for _, output := range outputs {
 		switch output.Type {
 		case "string":
 			// Next 32 of resp will show location of the string.
@@ -132,6 +157,9 @@ func (c Contract) UnmarshalResponse(funcName string, resp []byte, v interface{})
 
 			stringOut := resp[loc_64+32 : loc_64+32+stringLength_64]
 
+			if e.Kind() != reflect.String {
+				return errors.New("unexpected input type")
+			}
 			e.SetString(string(stringOut))
 		case "address":
 			// Next 32 of resp will be address.
@@ -142,7 +170,10 @@ func (c Contract) UnmarshalResponse(funcName string, resp []byte, v interface{})
 				return errors.New("can't read bytes")
 			}
 
-			e.SetString("0x" + hex.EncodeToString(address[12:]))
+			if e.Kind() != reflect.Slice {
+				return errors.New("unexpected input type")
+			}
+			e.SetBytes(address[12:])
 		default:
 			return errors.New("unsupported output type")
 		}

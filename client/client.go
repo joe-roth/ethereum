@@ -2,6 +2,7 @@ package client
 
 import (
 	"encoding/hex"
+	"ethereum/accnt"
 	"ethereum/contract"
 	"ethereum/txn"
 	"ethereum/util"
@@ -47,7 +48,7 @@ func (c Client) GetBalance(addr string) (*big.Int, error) {
 	return (*big.Int)(&result), err
 }
 
-func (c Client) GetTransactionCount(addr string) (uint64, error) {
+func (c Client) GetTransactionCount(addr accnt.Address) (uint64, error) {
 	var result hexutil.Uint64
 	err := c.Call(&result, "eth_getTransactionCount", addr, "latest")
 	return uint64(result), err

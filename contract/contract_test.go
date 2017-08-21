@@ -1,9 +1,30 @@
 package contract
 
 import (
+	"ethereum/accnt"
+	"ethereum/txn"
+	"fmt"
 	"reflect"
 	"testing"
 )
+
+func TestDeploy(t *testing.T) {
+	// Given a contract.
+	ct, err := Compile("test_data/escrow.sol")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a1, _ := accnt.NewAddress("0x19e7e376e7c213b7e7e7e46cc70a5dd086daff2a")
+	a2, _ := accnt.NewAddress("0x1563915e194d8cfba1943570603f7606a3115508")
+
+	var tx txn.Transaction
+	if err := ct.Deploy(&tx, a1, a2); err != nil {
+		t.Fatal(err)
+	}
+
+	fmt.Printf("tx.Data = %+v\n", tx.Data)
+}
 
 func TestCompile(t *testing.T) {
 	var tests = []struct {

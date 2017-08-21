@@ -77,9 +77,9 @@ func Decode(raw []byte) (Transaction, error) {
 	}, nil
 }
 
-func (t *Transaction) Sender() (string, error) {
+func (t *Transaction) Sender() (accnt.Address, error) {
 	if t.V != 27 && t.V != 28 {
-		return "", errors.New("protected txns not yet supported")
+		return accnt.Address{}, errors.New("protected txns not yet supported")
 	}
 
 	pub, err := accnt.Recover(t.SigHash(), accnt.Signature{
@@ -88,7 +88,7 @@ func (t *Transaction) Sender() (string, error) {
 		V: t.V-27 == 1,
 	})
 	if err != nil {
-		return "", err
+		return accnt.Address{}, err
 	}
 
 	return pub.Address(), nil

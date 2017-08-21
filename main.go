@@ -1,24 +1,18 @@
 package main
 
 import (
-	"encoding/hex"
-	"encoding/json"
-	"errors"
 	"ethereum/accnt"
 	"ethereum/client"
+	"ethereum/contract"
 	"ethereum/txn"
 	"fmt"
 	"math/big"
-	"os/exec"
 )
 
 var cl client.Client
+var accounts []accnt.Private
 
-func main() {
-
-}
-
-func getAccounts() []accnt.Private {
+func init() {
 	// 32 bytes
 	var pks = []string{
 		"1010101010101010101010101010101010101010101010101010101010101010",
@@ -38,54 +32,49 @@ func getAccounts() []accnt.Private {
 		"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
 	}
 
-	accnts := make([]accnt.Private, len(pks))
+	accounts = make([]accnt.Private, len(pks))
 	for i, pk := range pks {
 		ac, err := accnt.NewAccount(pk)
 		if err != nil {
 			panic(err)
 		}
-		accnts[i] = ac
+		accounts[i] = ac
 	}
 
-	return accnts
+	client, err := client.Dial("http://localhost:18545")
+	if err != nil {
+		panic(err)
+	}
+	cl = client
 }
 
-func deployContract(filename string) {
-	c, err := compileContract(filename)
+func main() {
+	callContract()
+	return
+
+	a := accounts[1]
+
+	ctr, err := contract.Compile("escrow.sol")
 	if err != nil {
 		panic(err)
 	}
 
-	// Create txn of contract.
+	nonce, err := cl.GetTransactionCount(a.Address())
+	if err != nil {
+		panic(err)
+	}
+
 	t := txn.Transaction{
+		Nonce:    nonce,
 		GasPrice: big.NewInt(2E10),    // 2E10 doesn't overflow int64, or else this wouldn't work.
 		GasLimit: big.NewInt(3150795), // 3150799 is gas limit
-		Data: func(h string) []byte {
-			d, err := hex.DecodeString(h)
-			if err != nil {
-				panic("unable to hex decode contract bin:" + err.Error())
-			}
-			return d
-		}(c.Bin),
 	}
 
-	accounts := getAccounts()
-	account := accounts[1]
-
-	bal, err := cl.GetBalance(account.Address())
-	if err != nil {
+	if err := ctr.Deploy(&t, accounts[2].Address(), accounts[3].Address()); err != nil {
 		panic(err)
 	}
 
-	nonce, err := cl.GetTransactionCount(account.Address())
-	if err != nil {
-		panic(err)
-	}
-	t.Nonce = nonce
-
-	fmt.Printf("Using account: %s\n\tbalance: %s\n\tnonce: %d\n", account.Address(), bal, nonce)
-
-	if err := t.Sign(account); err != nil {
+	if err := t.Sign(a); err != nil {
 		panic(err)
 	}
 
@@ -94,46 +83,19 @@ func deployContract(filename string) {
 		panic(err)
 	}
 
-	fmt.Println("Contract deployed!")
-	fmt.Println("Txn hash:", hash)
+	fmt.Printf("hash = %+v\n", hash)
 }
 
-type Contract struct {
-	Abi string `json:"abi"`
-	Bin string `json:"bin"`
-}
-
-func compileContract(filename string) (Contract, error) {
-	// Contract binary
-	// Call `solc filename.sol -bin` for binary data
-	fmt.Println("Compiling:", filename)
-	cmdName := "solc"
-	cmdArgs := []string{filename, "--combined-json", "abi,bin"}
-	cmdOut, err := exec.Command(cmdName, cmdArgs...).Output()
+func callContract() {
+	ctr, err := contract.Compile("escrow.sol")
 	if err != nil {
-		return Contract{}, err
+		panic(err)
 	}
+	ctr.Address = "0x59af421cb35fc23ab6c8ee42743e6176040031f4"
 
-	// Extract abi/bin from solc output
-	var data struct {
-		Contracts map[string]Contract `json:"contracts"`
-		Version   string              `json:"version"`
+	var resp accnt.Address
+	if err := cl.CallContract(ctr, "seller", nil, &resp); err != nil {
+		panic(err)
 	}
-	if err := json.Unmarshal(cmdOut, &data); err != nil {
-		return Contract{}, err
-	}
-
-	if len(data.Contracts) < 1 {
-		return Contract{}, errors.New("no contract in solc output")
-	}
-
-	// Take first contract output.
-	var c Contract
-	for k, contract := range data.Contracts {
-		fmt.Println("Using contract:", k)
-		c = contract
-		break
-	}
-
-	return c, nil
+	fmt.Printf("resp = %+v\n", resp)
 }
