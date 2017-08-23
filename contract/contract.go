@@ -120,6 +120,11 @@ func (c Contract) Deploy(t *txn.Transaction, args ...interface{}) error {
 	return nil
 }
 
+func (c Contract) Call(funcName string, t *txn.Transaction) error {
+	t.Data = c.Abi[funcName].Id()
+	return nil
+}
+
 // TODO for now, only unmarshals into a string
 func (c Contract) UnmarshalResponse(funcName string, resp []byte, v interface{}) error {
 	rv := reflect.ValueOf(v)
