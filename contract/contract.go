@@ -137,18 +137,18 @@ func (c Contract) UnmarshalResponse(funcName string, resp []byte, v interface{})
 	// Parse response
 	buf := bytes.NewBuffer(resp)
 	for _, output := range outputs {
+		r := make([]byte, 32)
+		if n, err := buf.Read(r); n != 32 {
+			return errors.New("not enough bytes in resp")
+		} else if err != nil {
+			return errors.New("can't read bytes")
+		}
+
 		switch output.Type {
 		case "string":
 			// Next 32 of resp will show location of the string.
-			loc := make([]byte, 32)
-			if n, err := buf.Read(loc); n != 32 {
-				return errors.New("not enough bytes in resp")
-			} else if err != nil {
-				return errors.New("can't read bytes")
-			}
-
 			// TODO: naive, what if loc exceeds uint64
-			loc_64 := binary.BigEndian.Uint64(loc[24:])
+			loc_64 := binary.BigEndian.Uint64(r[24:])
 
 			// Take 32 bytes from location, and that is length.
 			// TODO: also, limited to uint64 here
@@ -158,22 +158,19 @@ func (c Contract) UnmarshalResponse(funcName string, resp []byte, v interface{})
 			stringOut := resp[loc_64+32 : loc_64+32+stringLength_64]
 
 			if e.Kind() != reflect.String {
-				return errors.New("unexpected input type")
+				return errors.New("expected value kind string")
 			}
 			e.SetString(string(stringOut))
 		case "address":
-			// Next 32 of resp will be address.
-			address := make([]byte, 32)
-			if n, err := buf.Read(address); n != 32 {
-				return errors.New("not enough bytes in resp")
-			} else if err != nil {
-				return errors.New("can't read bytes")
-			}
-
 			if e.Kind() != reflect.Slice {
-				return errors.New("unexpected input type")
+				return errors.New("expected value kind address")
 			}
-			e.SetBytes(address[12:])
+			e.SetBytes(r[12:])
+		case "uint256":
+			if e.Kind() != reflect.Uint64 {
+				return errors.New("expected value kind uint64")
+			}
+			e.SetUint(binary.BigEndian.Uint64(r[24:]))
 		default:
 			return errors.New("unsupported output type")
 		}
