@@ -49,8 +49,8 @@ func init() {
 }
 
 func main() {
-	callContract()
-	return
+	//callContract()
+	//return
 
 	a := accounts[1]
 
@@ -68,11 +68,14 @@ func main() {
 		Nonce:    nonce,
 		GasPrice: big.NewInt(2E10),    // 2E10 doesn't overflow int64, or else this wouldn't work.
 		GasLimit: big.NewInt(3150795), // 3150799 is gas limit
+		//Value:    util.EthToWei(10),
+		To: "0x560a0c0ca6b0a67895024dae77442c5fd3dc473e",
 	}
 
-	if err := ctr.Deploy(&t, accounts[2].Address(), accounts[3].Address()); err != nil {
-		panic(err)
-	}
+	//if err := ctr.Deploy(&t, accounts[2].Address(), accounts[3].Address()); err != nil {
+	//panic(err)
+	//}
+	ctr.Call("payoutToSeller", &t)
 
 	if err := t.Sign(a); err != nil {
 		panic(err)
@@ -91,10 +94,10 @@ func callContract() {
 	if err != nil {
 		panic(err)
 	}
-	ctr.Address = "0x59af421cb35fc23ab6c8ee42743e6176040031f4"
+	ctr.Address = "0x560a0c0ca6b0a67895024dae77442c5fd3dc473e"
 
-	var resp accnt.Address
-	if err := cl.CallContract(ctr, "seller", nil, &resp); err != nil {
+	var resp uint64
+	if err := cl.CallContract(ctr, "payoutToSeller", nil, &resp); err != nil {
 		panic(err)
 	}
 	fmt.Printf("resp = %+v\n", resp)
