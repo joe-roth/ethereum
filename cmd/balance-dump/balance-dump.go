@@ -10,8 +10,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/ethereum/go-ethereum/rlp"
 )
 
 // INPUTS
@@ -26,10 +28,12 @@ var (
 	dbDir       string
 	root        string
 	outFileName string
+	errFileName string
 
 	emptyCodeHash = crypto.Keccak256([]byte{})
 	ldb           *ethdb.LDBDatabase
 	outFile       *os.File
+	errFile       *os.File
 	numProcessed  int
 )
 
@@ -38,6 +42,7 @@ func init() {
 	flag.StringVar(&dbDir, "db", dir, "Leveldb directory")
 	flag.StringVar(&root, "root", "", "Hex formatted, '0x' prefixed root state key")
 	flag.StringVar(&outFileName, "o", "output", "File to store the output")
+	flag.StringVar(&errFileName, "e", "errors", "File to store errors")
 	flag.Parse()
 }
 
@@ -61,7 +66,7 @@ func main() {
 		panic("leveldb does not exist in " + dbDir)
 	}
 
-	ldb, err = ethdb.NewLDBDatabase(dbDir, 128, 1024)
+	ldb, err = ethdb.NewLDBDatabase(dbDir, 128, 128)
 	if err != nil {
 		panic("unable to join ldb: " + err.Error())
 	}
@@ -72,15 +77,27 @@ func main() {
 	}
 	defer outFile.Close()
 
+	errFile, err = os.OpenFile(errFileName, os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		panic("unable to open file: " + err.Error())
+	}
+	defer errFile.Close()
+
 	// Recursively traverse every node.
 	processNode(key)
 }
 
 func processNode(hash []byte) {
-	r := getNode(hash)
+	r, err := getNode(hash)
+	if err != nil {
+		errFile.WriteString(fmt.Sprintf("Error getting node %+v: %s\n", hash, err))
+		return
+	}
 	switch len(r) {
 	case 2:
-		processLeaf(r[1])
+		if err := processLeaf(r[1]); err != nil {
+			errFile.WriteString(fmt.Sprintf("Error processing leaf %+v: %s\n", hash, err))
+		}
 	case 17:
 		for _, v := range r {
 			if len(v) == 0 {
@@ -91,60 +108,53 @@ func processNode(hash []byte) {
 	}
 }
 
-func getNode(hash []byte) [][]byte {
+func getNode(hash []byte) ([][]byte, error) {
 	r, err := ldb.Get(hash)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	out, err := util.DecodeRLP(bytes.NewBuffer(r))
 	if err != nil {
-		panic("unable to decode rlp: " + err.Error())
+		return nil, err
 	}
 
 	outArr, ok := out.([]interface{})
 	if !ok {
-		panic("unable to convert to []interface{}")
+		return nil, err
 	}
 
 	vals := make([][]byte, len(outArr))
 	for i, v := range outArr {
 		outVal, ok := v.([]byte)
 		if !ok {
-			panic("unable to convert to []byte")
+			return nil, fmt.Errorf("Unable to process rlp")
 		}
 		vals[i] = outVal
 	}
 
-	return vals
+	return vals, nil
 }
 
-func processLeaf(account []byte) {
-	accountRaw, err := util.DecodeRLP(bytes.NewBuffer(account))
-	if err != nil {
-		panic(err)
+type account struct {
+	Nonce    uint64
+	Balance  *big.Int
+	Root     common.Hash
+	CodeHash []byte
+}
+
+func processLeaf(in []byte) error {
+	var a account
+	if err := rlp.Decode(bytes.NewReader(in), &a); err != nil {
+		return err
 	}
 
-	accountArr, ok := accountRaw.([]interface{})
-	if !ok {
-		panic("unable to convert to []interface{}")
-	}
+	isContract := !bytes.Equal(a.CodeHash, emptyCodeHash)
 
-	vals := make([][]byte, len(accountArr))
-	for i, v := range accountArr {
-		outVal, ok := v.([]byte)
-		if !ok {
-			panic("unable to convert to []byte")
-		}
-		vals[i] = outVal
-	}
-
-	balance := new(big.Int).SetBytes(vals[1])
-	isContract := !bytes.Equal(vals[3], emptyCodeHash)
-
-	if _, err := outFile.WriteString(fmt.Sprintf("%s,%t\n", balance.String(), isContract)); err != nil {
-		panic("can't write to file: " + err.Error())
+	if _, err := outFile.WriteString(fmt.Sprintf("%s,%t\n", a.Balance.String(), isContract)); err != nil {
+		return err
 	}
 	numProcessed++
 	fmt.Println("Processed", numProcessed)
+	return nil
 }
